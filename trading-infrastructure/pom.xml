@@ -32,6 +32,16 @@
             <artifactId>resilience4j-spring-boot3</artifactId>
         </dependency>
 
+        <!-- 실 브로커 REST 연동(RestClient) + JSON -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-json</artifactId>
+        </dependency>
+
         <!-- Flyway -->
         <dependency>
             <groupId>org.flywaydb</groupId>

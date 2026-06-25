@@ -8,6 +8,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -27,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 오류 코드 매핑, 멱등성 헤더, 계좌번호 전달 방식(마스킹/암호화).
  */
 @Component
+@ConditionalOnProperty(prefix = "trading.broker", name = "provider", havingValue = "mock", matchIfMissing = true)
 public class MockTossBrokerAdapter implements BrokerPort {
 
     private static final Logger log = LoggerFactory.getLogger(MockTossBrokerAdapter.class);

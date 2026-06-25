@@ -30,6 +30,20 @@ trading:
   approval-required: true
   dry-run: true
   mode: PAPER
+  # 브로커 연동: 기본 mock(시뮬레이션). 실 연동은 provider=rest + 공식 스펙 값 주입.
+  # ⚠️ 엔드포인트/필드명은 증권사 공식 문서 확인 후 채울 것(추측 금지). docs/integration/TOSS_BROKER_INTEGRATION.md 참고.
+  broker:
+    provider: ${BROKER_PROVIDER:mock}      # mock | rest
+    base-url: ${BROKER_API_BASE_URL:}
+    token-url: ${BROKER_TOKEN_URL:}
+    app-key: ${BROKER_APP_KEY:}
+    app-secret: ${BROKER_APP_SECRET:}
+    account-no: ${BROKER_ACCOUNT_NO:}
+    connect-timeout-ms: 3000
+    read-timeout-ms: 5000
+    # paths/request/response/token 필드명은 BrokerProperties 기본값 사용, 필요 시 override:
+    # paths: { order: /v1/orders, cancel: /v1/orders/cancel, query: /v1/orders }
+    # response: { order-ref: orderId, filled-quantity: filledQuantity, avg-price: avgPrice, result-code: resultCode, success-code: "0" }
   outbox:
     dispatch-interval-ms: 5000
   batch:

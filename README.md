@@ -53,14 +53,14 @@
 | AI 신호 생성(Mock 휴리스틱) + 신호 품질 게이트 | ✅ |
 | Risk Engine(Kill Switch·한도·중복·빈도·잔고·신뢰도·거래정지/유동성) | ✅ |
 | 주문 상태기계(11상태) + 자동/승인대기/거절 분기 | ✅ |
-| 토스 Adapter(**Mock**) + Resilience4j(Retry/CircuitBreaker) + 멱등키 | ✅ (실 스펙 연동 전) |
+| 브로커 어댑터: Mock(기본) + **실 REST 어댑터(설정 주입형)** + Resilience4j + 멱등키 | ✅ (실 스펙 값만 채우면 연동) |
 | Outbox 제출 + 디스패처 재시도 | ✅ |
 | 타임아웃 결과 불명 복구(주문 조회 재동기화, 맹목 재전송 금지) | ✅ |
 | 체결 → 포지션·현금 갱신, 매도 실현손실 → 일일 손실 한도 반영 | ✅ |
 | batch-service(주문 동기화·전략 성과 재평가/비활성화·일일 정산) | ✅ |
 | market-data(**Mock**, instrument 시드) | ✅ (실 피드 연동 전) |
 | Flyway 마이그레이션 + JPA 영속화 + 감사 로그 | ✅ |
-| 토스증권 실제 API 연동 | ⛔ 미구현(공식 문서 확인 후) |
+| 실 증권사 주문 연동 | 🟡 어댑터 완비(`RestBrokerAdapter`), 스펙 값 주입 시 동작. 토스 개인 주문 API 미공개 — [연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md) |
 | Redis 레이트리미트 / 분산 Outbox 락 | ⛔ 보류(인프라 필요) |
 
 > 기본 실행은 **Mock 브로커 + H2 인메모리**로 Docker 없이 전 과정을 시연/테스트할 수 있습니다.
@@ -165,6 +165,7 @@ curl -s localhost:8080/api/v1/risk/status
 | [STRATEGY_GOVERNANCE.md](STRATEGY_GOVERNANCE.md) | 전략 등록·검증·승격·중단 |
 | [API_CONTRACT.md](API_CONTRACT.md) | 내부 API 계약·DTO |
 | [SECURITY.md](SECURITY.md) | 비밀정보·로그 마스킹·감사·권한 |
+| [docs/integration/TOSS_BROKER_INTEGRATION.md](docs/integration/TOSS_BROKER_INTEGRATION.md) | 실 증권사 REST 연동·설정·보안 체크리스트 |
 | [docs/system/](docs/system/) | 흐름·다이어그램(Mermaid)·운영 |
 | [docs/decision-log/](docs/decision-log/) | 아키텍처 결정 기록(ADR) |
 
@@ -172,12 +173,13 @@ curl -s localhost:8080/api/v1/risk/status
 
 ## 9. 로드맵 (다음 작업)
 
-1. 부분 체결(`PARTIALLY_FILLED`) 처리 + 잔량 정책
-2. T+2 결제 정확화(매수 직후 매도가능수량 미증가)
-3. market-data 실수집 어댑터(시세/호가/거래정지 피드)
-4. 토스증권 실제 API 연동(인증·주문·조회) — 공식 문서 확인 후 `MockTossBrokerAdapter` 교체
-5. Redis 기반 레이트리미트/중복 판정, 분산 Outbox 락
-6. Python 전략 연구·백테스트 모듈(`research/`)
+- [x] 부분 체결(`PARTIALLY_FILLED`) 처리 + 잔량 정책
+- [x] T+2 결제(매수 직후 매도가능수량 미증가 → 결제 후 전환)
+- [x] 실 증권사 REST 어댑터(설정 주입형) — 스펙 값 입력 시 동작 ([연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md))
+- [ ] market-data 실수집 어댑터(시세/호가/거래정지 피드)
+- [ ] 실 브로커 스펙 확정 후 값 입력 + 모의투자 검증(토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상)
+- [ ] Redis 기반 레이트리미트/중복 판정, 분산 Outbox 락
+- [ ] Python 전략 연구·백테스트 모듈(`research/`)
 
 ---
 
