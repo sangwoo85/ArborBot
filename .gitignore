@@ -1,0 +1,72 @@
+# ===== 비밀정보 / 환경 (절대 커밋 금지) =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+secrets/
+**/application-local.yml
+**/application-local.yaml
+**/application-secret*.yml
+**/application-secret*.yaml
+broker-credentials*
+account*.json
+access-token*
+*token*.txt
+
+# ===== Java / Maven =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.log
+*.jar
+*.war
+hs_err_pid*
+.mvn/timing.properties
+
+# ===== Gradle (혹시 사용 시) =====
+.gradle/
+build/
+
+# ===== Python (research 모듈) =====
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+.mypy_cache/
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# ===== Docker / 데이터 볼륨 =====
+docker-data/
+mysql-data/
+redis-data/
+
+# ===== 빌드/테스트 산출물 =====
+coverage/
+*.lcov
+logs/
+*.bak
+
+# ===== 백테스트/연구 산출물 (대용량/민감) =====
+research/output/
+research/data/
+*.parquet
+*.feather
+backtest-results/
+
+# ===== 개인 투자 내역 (절대 커밋 금지) =====
+portfolio-snapshots/
+trade-history/
+*.private.*

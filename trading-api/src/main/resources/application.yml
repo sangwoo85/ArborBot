@@ -1,0 +1,79 @@
+# 기본(local) 프로파일: H2 인메모리로 Docker 없이 실행 가능.
+# 실제 운영은 'mysql' 프로파일 사용(application-mysql.yml).
+spring:
+  application:
+    name: toss-ai-trading-platform
+  datasource:
+    url: jdbc:h2:mem:trading;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: none      # 스키마는 Flyway 가 관리
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  h2:
+    console:
+      enabled: true
+
+server:
+  port: 8080
+
+# 거래/위험 설정 — 기본값은 안전한 쪽(자동매매 off, 승인 필요, dryRun)
+trading:
+  auto-trading-enabled: false
+  approval-required: true
+  dry-run: true
+  mode: PAPER
+  outbox:
+    dispatch-interval-ms: 5000
+  batch:
+    order-sync-interval-ms: 15000
+    strategy-eval-interval-ms: 3600000
+  limits:
+    max-order-amount: 1000000
+    max-daily-order-amount: 5000000
+    max-daily-loss: 300000
+    max-position-percent: 10
+    max-sector-percent: 30
+    min-cash-reserve-percent: 10
+    auto-order-amount-cap: 300000
+    min-confidence-score: 60
+    auto-confidence-score: 70
+    max-orders-per-minute: 5
+
+# 외부 API 복원력 (Mock broker 에 적용)
+resilience4j:
+  retry:
+    instances:
+      broker:
+        max-attempts: 3
+        wait-duration: 200ms
+  circuitbreaker:
+    instances:
+      broker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    NOTIFICATION: INFO

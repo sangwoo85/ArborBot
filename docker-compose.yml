@@ -1,0 +1,76 @@
+# ============================================================
+# docker-compose.yml — 로컬/단일 호스트 기동용
+# 비밀값은 .env 에서 주입 (이 파일에 비밀정보를 직접 쓰지 마십시오)
+# ============================================================
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: trading-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-trading}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [trading-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    restart: unless-stopped
+    command: >
+      sh -c "redis-server
+      $${REDIS_PASSWORD:+--requirepass $$REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [trading-net]
+
+  # ---- 애플리케이션 서비스 (빌드 구성 후 활성화) ----
+  # 각 서비스는 backend/<module> 에 Dockerfile 추가 후 주석 해제하여 사용합니다.
+  #
+  # api-gateway:
+  #   build: ./backend/api-gateway
+  #   container_name: trading-gateway
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+  #     TRADING_MODE: ${TRADING_MODE:-PAPER}        # 최초 기동은 PAPER 권장
+  #     KILL_SWITCH_ENABLED: ${KILL_SWITCH_ENABLED:-false}
+  #   depends_on:
+  #     mysql: { condition: service_healthy }
+  #     redis: { condition: service_healthy }
+  #   ports:
+  #     - "8080:8080"
+  #   networks: [trading-net]
+  #
+  # ai-trader-service / risk-engine / order-service / market-data-service /
+  # strategy-service / portfolio-service / audit-service 도 동일 패턴으로 추가.
+  # ★ order-service 만 BROKER_* 자격증명을 env 로 받습니다(권한 분리, SECURITY.md 참고).
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  trading-net:
+    driver: bridge
