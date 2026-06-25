@@ -44,6 +44,14 @@ trading:
     # paths/request/response/token 필드명은 BrokerProperties 기본값 사용, 필요 시 override:
     # paths: { order: /v1/orders, cancel: /v1/orders/cancel, query: /v1/orders }
     # response: { order-ref: orderId, filled-quantity: filledQuantity, avg-price: avgPrice, result-code: resultCode, success-code: "0" }
+  # 시장 데이터: 기본 mock(instrument 시드). 실 수집은 provider=rest + 공식 스펙 값 주입.
+  marketdata:
+    provider: ${MARKETDATA_PROVIDER:mock}   # mock | rest
+    base-url: ${MARKETDATA_BASE_URL:}
+    instrument-path: ${MARKETDATA_INSTRUMENT_PATH:}
+    api-key-header: ${MARKETDATA_API_KEY_HEADER:}
+    api-key: ${MARKETDATA_API_KEY:}
+    # fields: { price: lastPrice, sector: sector, tradable: tradable, halted: halted, illiquid: illiquid }
   outbox:
     dispatch-interval-ms: 5000
   batch:
@@ -68,9 +76,16 @@ resilience4j:
       broker:
         max-attempts: 3
         wait-duration: 200ms
+      marketdata:
+        max-attempts: 2
+        wait-duration: 150ms
   circuitbreaker:
     instances:
       broker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      marketdata:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s

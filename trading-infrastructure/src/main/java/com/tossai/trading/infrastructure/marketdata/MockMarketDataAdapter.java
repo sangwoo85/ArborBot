@@ -3,6 +3,7 @@ package com.tossai.trading.infrastructure.marketdata;
 import com.tossai.trading.application.port.out.MarketDataPort;
 import com.tossai.trading.domain.market.Instrument;
 import com.tossai.trading.infrastructure.persistence.jpa.InstrumentJpaRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ import java.util.Optional;
  * 실제 구현에서는 시세/호가/거래정지 피드를 수집해 갱신한다.
  */
 @Component
+@ConditionalOnProperty(prefix = "trading.marketdata", name = "provider", havingValue = "mock", matchIfMissing = true)
 public class MockMarketDataAdapter implements MarketDataPort {
 
     private final InstrumentJpaRepository jpa;

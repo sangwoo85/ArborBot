@@ -49,7 +49,7 @@ trading-api          부트 진입점 + REST 컨트롤러 + 예외처리 + OpenA
 요청 사양 14개 서비스 → 본 구조 매핑:
 | 사양 모듈 | 위치 |
 | --- | --- |
-| market-data-service | `application/service/marketdata` + `infrastructure/marketdata/MockMarketDataAdapter` |
+| market-data-service | `application/service/marketdata` + `infrastructure/marketdata/` (Mock 기본 / `RestMarketDataAdapter` provider=rest) |
 | strategy-engine | `application/service/strategyengine` |
 | ai-trader-service | `application/service/aitrader` (주문 의존 없음) |
 | portfolio-service | `application/service/portfolio` |
@@ -94,10 +94,10 @@ APPROVED면 Outbox enqueue + `ExecutionSubmitter.submit`(Mock 브로커, 체결 
 - **테스트 격리**: 각 통합 테스트 클래스는 고유 H2 인메모리 DB를 `properties`로 지정.
   예: `spring.datasource.url=jdbc:h2:mem:trading_xxx;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`.
   (같은 이름 mem DB는 JVM 내 공유되므로 테스트마다 이름을 다르게.)
-- 위험/주문 로직 변경 시 **거절 케이스 테스트 필수**. 현재 통과 테스트(20개)는 회귀 가드:
+- 위험/주문 로직 변경 시 **거절 케이스 테스트 필수**. 현재 통과 테스트(22개)는 회귀 가드:
   상태기계, 기본흐름(PENDING→approve→FILLED), 자동주문, KillSwitch 거절, 거래정지/유동성 거절,
   일일손실 한도 차단, 타임아웃 재동기화, 부분 체결 수렴, T+2 결제, 포지션 갱신, 전략 재평가,
-  REST 브로커 어댑터(MockRestServiceServer), 스모크.
+  REST 브로커/시세 어댑터(MockRestServiceServer), 스모크.
 - 기대 동작이 "거절"인데 신뢰도/한도 때문에 의도와 다르게 막히면, 테스트 `properties`로
   `trading.limits.*`(min-confidence-score, max-order-amount 등)를 조정해 의도한 한 가지만 검증.
 
@@ -109,22 +109,26 @@ APPROVED면 Outbox enqueue + `ExecutionSubmitter.submit`(Mock 브로커, 체결 
 주문 상태기계·자동/승인/거절, Mock 토스 어댑터(Retry/CB/멱등/조회), Outbox+디스패처,
 타임아웃 결과불명 복구(맹목 재전송 금지), **부분 체결 처리(delta 누적·잔량 폴링·수렴)**,
 체결→포지션/현금 갱신, 매도 실현손실→일일손실 한도, **T+2 결제(매수 직후 매도불가→결제 후 매도가능 전환)**,
-batch(주문동기화·전략 재평가/비활성화·일일정산·결제처리), market-data(Mock), Flyway/JPA/감사로그/Actuator/Swagger.
+batch(주문동기화·전략 재평가/비활성화·일일정산·결제처리), market-data(Mock 기본 + 실 REST 어댑터),
+브로커(Mock 기본 + 실 REST 어댑터, 설정 주입형), Flyway/JPA/감사로그/Actuator/Swagger.
 
 > 부분 체결: 브로커 응답의 **누적** 체결수량과 이미 반영분의 차이(delta)만 처리(`ExecutionSubmitter.applyAccepted`).
 > 부분 체결 동안 Outbox 는 PENDING 유지 → 디스패처/배치(`syncSubmittedOrders`)가 잔량을 폴링해 FILLED 로 수렴.
 > 상태기계는 `PARTIALLY_FILLED → PARTIALLY_FILLED` 자기 전이 허용.
 
 **다음 작업(우선순위 순)**:
-1. market-data 실수집 어댑터(시세/호가/거래정지 피드)로 `MockMarketDataAdapter` 대체.
-2. 실 브로커 스펙 확정 시 `RestBrokerAdapter` 설정값 채우기(`docs/integration/TOSS_BROKER_INTEGRATION.md`) —
-   토스 개인 주문 API 미공개이므로 KIS/키움 등 공식 API 대상 또는 증권사 모의투자로 검증.
-3. Redis 레이트리미트/중복 판정, 분산 Outbox 락(다중 인스턴스).
-4. `research/`(Python) 백테스트 모듈.
-5. T+2 결제 정교화: 공휴일 캘린더 반영(현재 주말만 제외), 매도 시 결제 로트(FIFO) 차감.
+1. Redis 레이트리미트/중복 판정, 분산 Outbox 락(다중 인스턴스).
+2. `research/`(Python) 백테스트 모듈.
+3. 실 외부 API 스펙 확정 시 설정값 입력 + 모의투자 검증:
+   - 브로커: `RestBrokerAdapter`(`trading.broker.*`) — 토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상.
+   - 시세: `RestMarketDataAdapter`(`trading.marketdata.*`).
+   가이드: `docs/integration/TOSS_BROKER_INTEGRATION.md`.
+4. T+2 결제 정교화: 공휴일 캘린더 반영(현재 주말만 제외), 매도 시 결제 로트(FIFO) 차감.
+5. 실시간 시세 시뮬레이터(PAPER 데모용 가격 random-walk, 기본 off).
 
-> 브로커 연동: `BrokerPort` 추상화, `provider=mock|rest`. `RestBrokerAdapter`는 엔드포인트/인증/필드명을
-> `trading.broker.*` 설정으로 주입(스펙 하드코딩 금지). 매핑은 `token()/buildOrderBody()/parseOrderResponse()` 한 파일에서 조정.
+> 외부 연동 패턴: `BrokerPort`/`MarketDataPort` 추상화 + `provider=mock|rest` 스위치. REST 어댑터는
+> 엔드포인트/인증/필드명을 `trading.{broker,marketdata}.*` 설정으로 주입(스펙 하드코딩 금지).
+> 매핑은 각 어댑터의 parse/build 메서드 한 파일에서 조정. RestClient.Builder 빈은 `BrokerConfig` 하나 공유.
 
 **보류(이유)**: Redis/분산 락은 추가 인프라 필요 → 단일 인스턴스 가정 하에 DB 기반으로 동작 중.
 

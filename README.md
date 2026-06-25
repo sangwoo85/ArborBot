@@ -58,7 +58,7 @@
 | 타임아웃 결과 불명 복구(주문 조회 재동기화, 맹목 재전송 금지) | ✅ |
 | 체결 → 포지션·현금 갱신, 매도 실현손실 → 일일 손실 한도 반영 | ✅ |
 | batch-service(주문 동기화·전략 성과 재평가/비활성화·일일 정산) | ✅ |
-| market-data(**Mock**, instrument 시드) | ✅ (실 피드 연동 전) |
+| market-data: Mock(instrument 시드) + **실 REST 수집 어댑터(설정 주입형)** | ✅ (실 피드 스펙 값만 채우면 연동) |
 | Flyway 마이그레이션 + JPA 영속화 + 감사 로그 | ✅ |
 | 실 증권사 주문 연동 | 🟡 어댑터 완비(`RestBrokerAdapter`), 스펙 값 주입 시 동작. 토스 개인 주문 API 미공개 — [연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md) |
 | Redis 레이트리미트 / 분산 Outbox 락 | ⛔ 보류(인프라 필요) |
@@ -176,7 +176,7 @@ curl -s localhost:8080/api/v1/risk/status
 - [x] 부분 체결(`PARTIALLY_FILLED`) 처리 + 잔량 정책
 - [x] T+2 결제(매수 직후 매도가능수량 미증가 → 결제 후 전환)
 - [x] 실 증권사 REST 어댑터(설정 주입형) — 스펙 값 입력 시 동작 ([연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md))
-- [ ] market-data 실수집 어댑터(시세/호가/거래정지 피드)
+- [x] market-data 실수집 REST 어댑터(설정 주입형) — 시세/거래정지/유동성 매핑
 - [ ] 실 브로커 스펙 확정 후 값 입력 + 모의투자 검증(토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상)
 - [ ] Redis 기반 레이트리미트/중복 판정, 분산 Outbox 락
 - [ ] Python 전략 연구·백테스트 모듈(`research/`)
