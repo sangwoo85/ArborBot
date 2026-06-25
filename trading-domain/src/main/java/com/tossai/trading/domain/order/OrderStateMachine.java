@@ -23,8 +23,9 @@ public final class OrderStateMachine {
         ALLOWED.put(OrderStatus.SUBMITTED, EnumSet.of(
                 OrderStatus.PARTIALLY_FILLED, OrderStatus.FILLED,
                 OrderStatus.FAILED, OrderStatus.CANCEL_REQUESTED));
+        // 점진적 부분 체결: 추가 체결마다 PARTIALLY_FILLED 로의 자기 전이 허용
         ALLOWED.put(OrderStatus.PARTIALLY_FILLED, EnumSet.of(
-                OrderStatus.FILLED, OrderStatus.CANCEL_REQUESTED));
+                OrderStatus.PARTIALLY_FILLED, OrderStatus.FILLED, OrderStatus.CANCEL_REQUESTED));
         ALLOWED.put(OrderStatus.CANCEL_REQUESTED, EnumSet.of(
                 OrderStatus.CANCELLED, OrderStatus.FILLED));
         // 종료 상태에서의 전이는 없음

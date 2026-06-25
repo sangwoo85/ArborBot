@@ -41,13 +41,17 @@ public class BatchService {
         this.notifications = notifications;
     }
 
-    /** 결과 불명(SUBMITTED) 주문을 증권사 조회로 재동기화한다(재전송 없음). */
+    /**
+     * 미완 주문(SUBMITTED: 결과 불명 / PARTIALLY_FILLED: 잔량)을 증권사 조회로 재동기화한다(재전송 없음).
+     */
     public int syncSubmittedOrders() {
-        List<Order> submitted = orderRepository.findByStatus("SUBMITTED");
-        for (Order o : submitted) {
-            submitter.submit(o.getOrderId());   // SUBMITTED → 조회 기반 reconcile
+        List<Order> pending = new java.util.ArrayList<>();
+        pending.addAll(orderRepository.findByStatus("SUBMITTED"));
+        pending.addAll(orderRepository.findByStatus("PARTIALLY_FILLED"));
+        for (Order o : pending) {
+            submitter.submit(o.getOrderId());   // 조회 기반 reconcile (추가 체결 반영)
         }
-        return submitted.size();
+        return pending.size();
     }
 
     /** 전략 성과 재평가 → 임계 미달 전략 비활성화. */

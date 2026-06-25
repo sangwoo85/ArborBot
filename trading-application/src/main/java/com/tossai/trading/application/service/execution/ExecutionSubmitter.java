@@ -76,8 +76,9 @@ public class ExecutionSubmitter {
                 .orElseThrow(() -> new DomainException(ErrorCode.NOT_FOUND, "주문 없음: " + orderId));
         if (order.getStatus() == OrderStatus.APPROVED) {
             place(order);
-        } else if (order.getStatus() == OrderStatus.SUBMITTED) {
-            reconcile(order);
+        } else if (order.getStatus() == OrderStatus.SUBMITTED
+                || order.getStatus() == OrderStatus.PARTIALLY_FILLED) {
+            reconcile(order);   // 결과 불명 또는 잔량 — 조회로 추가 체결 반영(재전송 없음)
         }
     }
 
@@ -130,48 +131,63 @@ public class ExecutionSubmitter {
         // 미확인이면 SUBMITTED 유지. 다음 주기에 재시도(운영자 개입 가능).
     }
 
+    /**
+     * 증권사 응답의 <b>누적</b> 체결수량과 이미 반영한 수량의 차이(delta)만 처리한다.
+     * 부분 체결이 여러 번 들어와도 중복 반영 없이 잔량만큼만 누적된다.
+     */
     private void applyAccepted(Order order, BrokerOrderResponse resp) {
-        order.applyFill(resp.filledQuantity());
+        long cumulativeFilled = resp.filledQuantity();
+        long delta = cumulativeFilled - order.getFilledQuantity();
+        if (delta <= 0) {
+            return;   // 추가 체결 없음 — 상태 유지(잔량 대기)
+        }
+
+        order.applyFill(delta);   // PARTIALLY_FILLED 또는 FILLED 로 전이
         orderRepository.save(order);
-        executionRepository.save(new OrderExecution(
-                Ids.newId("exec"), order.getOrderId(), order.getCorrelationId(),
-                resp.filledQuantity(), resp.avgFillPrice(),
-                BigDecimal.ZERO, BigDecimal.ZERO, resp.brokerOrderRef(), Instant.now()));
 
         BigDecimal fillPrice = nz(resp.avgFillPrice());
-        BigDecimal amount = fillPrice.multiply(BigDecimal.valueOf(resp.filledQuantity()));
-        usageRepository.addOrderAmount(LocalDate.now(), amount);
+        executionRepository.save(new OrderExecution(
+                Ids.newId("exec"), order.getOrderId(), order.getCorrelationId(),
+                delta, fillPrice, BigDecimal.ZERO, BigDecimal.ZERO, resp.brokerOrderRef(), Instant.now()));
+        usageRepository.addOrderAmount(LocalDate.now(), fillPrice.multiply(BigDecimal.valueOf(delta)));
 
-        // 포지션/현금 갱신(체결 반영). 매도는 손익 계산을 먼저 한 뒤 포지션을 줄인다.
+        // 포지션/현금 갱신(이번 delta 만). 매도는 손익 계산을 먼저 한 뒤 포지션을 줄인다.
         if (order.getSide() == OrderSide.SELL) {
-            BigDecimal realizedLoss = computeRealizedLoss(order, resp);   // 매도 전 평균가 기준
+            BigDecimal realizedLoss = computeRealizedLoss(order, fillPrice, delta);  // 매도 전 평균가 기준
             usageRepository.addRealizedLoss(LocalDate.now(), realizedLoss);
             if (realizedLoss.signum() > 0) {
                 notifications.notify("INFO", "실현 손실",
                         "order=" + order.getOrderId() + " loss=" + realizedLoss, order.getCorrelationId());
             }
-            portfolioRepository.applySell(order.getSymbol(), resp.filledQuantity(), fillPrice);
+            portfolioRepository.applySell(order.getSymbol(), delta, fillPrice);
         } else {
             String sector = marketDataPort.getInstrument(order.getSymbol())
                     .map(i -> i.sector()).orElse("UNKNOWN");
-            portfolioRepository.applyBuy(order.getSymbol(), sector, resp.filledQuantity(), fillPrice);
+            portfolioRepository.applyBuy(order.getSymbol(), sector, delta, fillPrice);
         }
 
-        outbox.markProcessed(order.getOrderId());
-        notifications.notify("INFO", "체결",
-                "order=" + order.getOrderId() + " status=" + order.getStatus()
-                        + " filled=" + resp.filledQuantity(), order.getCorrelationId());
-        audit(order, "FILLED_" + order.getStatus());
+        if (order.getStatus() == OrderStatus.FILLED) {
+            outbox.markProcessed(order.getOrderId());
+            notifications.notify("INFO", "체결 완료",
+                    "order=" + order.getOrderId() + " filled=" + order.getFilledQuantity(),
+                    order.getCorrelationId());
+            audit(order, "FILLED");
+        } else {
+            // 부분 체결: Outbox 는 PENDING 유지 → 디스패처/배치가 잔량을 계속 폴링
+            notifications.notify("INFO", "부분 체결",
+                    "order=" + order.getOrderId() + " filled=" + order.getFilledQuantity()
+                            + "/" + order.getQuantity(), order.getCorrelationId());
+            audit(order, "PARTIALLY_FILLED");
+        }
     }
 
-    /** 실현 손실(양수=손실). 보유 평균가 대비 체결가가 낮으면 손실. */
-    private BigDecimal computeRealizedLoss(Order order, BrokerOrderResponse resp) {
+    /** 실현 손실(양수=손실). 보유 평균가 대비 체결가가 낮으면 손실. delta 수량 기준. */
+    private BigDecimal computeRealizedLoss(Order order, BigDecimal fillPrice, long delta) {
         Position pos = portfolioRepository.getCurrent().findPosition(order.getSymbol());
-        if (pos == null || pos.avgPrice() == null || resp.avgFillPrice() == null) {
+        if (pos == null || pos.avgPrice() == null) {
             return BigDecimal.ZERO;
         }
-        BigDecimal pnl = resp.avgFillPrice().subtract(pos.avgPrice())
-                .multiply(BigDecimal.valueOf(resp.filledQuantity()));
+        BigDecimal pnl = fillPrice.subtract(pos.avgPrice()).multiply(BigDecimal.valueOf(delta));
         return pnl.signum() < 0 ? pnl.negate() : BigDecimal.ZERO;
     }
 

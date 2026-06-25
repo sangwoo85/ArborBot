@@ -92,9 +92,9 @@ APPROVED면 Outbox enqueue + `ExecutionSubmitter.submit`(Mock 브로커, 체결 
 - **테스트 격리**: 각 통합 테스트 클래스는 고유 H2 인메모리 DB를 `properties`로 지정.
   예: `spring.datasource.url=jdbc:h2:mem:trading_xxx;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`.
   (같은 이름 mem DB는 JVM 내 공유되므로 테스트마다 이름을 다르게.)
-- 위험/주문 로직 변경 시 **거절 케이스 테스트 필수**. 현재 통과 테스트(16개)는 회귀 가드:
+- 위험/주문 로직 변경 시 **거절 케이스 테스트 필수**. 현재 통과 테스트(17개)는 회귀 가드:
   상태기계, 기본흐름(PENDING→approve→FILLED), 자동주문, KillSwitch 거절, 거래정지/유동성 거절,
-  일일손실 한도 차단, 타임아웃 재동기화, 포지션 갱신, 전략 재평가, 스모크.
+  일일손실 한도 차단, 타임아웃 재동기화, 부분 체결 수렴, 포지션 갱신, 전략 재평가, 스모크.
 - 기대 동작이 "거절"인데 신뢰도/한도 때문에 의도와 다르게 막히면, 테스트 `properties`로
   `trading.limits.*`(min-confidence-score, max-order-amount 등)를 조정해 의도한 한 가지만 검증.
 
@@ -104,16 +104,20 @@ APPROVED면 Outbox enqueue + `ExecutionSubmitter.submit`(Mock 브로커, 체결 
 
 **구현됨**: 신호생성(Mock)·품질게이트, RiskEngine(KillSwitch/한도/중복/빈도/잔고/신뢰도/거래정지·유동성),
 주문 상태기계·자동/승인/거절, Mock 토스 어댑터(Retry/CB/멱등/조회), Outbox+디스패처,
-타임아웃 결과불명 복구(맹목 재전송 금지), 체결→포지션/현금 갱신, 매도 실현손실→일일손실 한도,
-batch(주문동기화·전략 재평가/비활성화·일일정산), market-data(Mock), Flyway/JPA/감사로그/Actuator/Swagger.
+타임아웃 결과불명 복구(맹목 재전송 금지), **부분 체결 처리(delta 누적·잔량 폴링·수렴)**,
+체결→포지션/현금 갱신, 매도 실현손실→일일손실 한도, batch(주문동기화·전략 재평가/비활성화·일일정산),
+market-data(Mock), Flyway/JPA/감사로그/Actuator/Swagger.
+
+> 부분 체결: 브로커 응답의 **누적** 체결수량과 이미 반영분의 차이(delta)만 처리(`ExecutionSubmitter.applyAccepted`).
+> 부분 체결 동안 Outbox 는 PENDING 유지 → 디스패처/배치(`syncSubmittedOrders`)가 잔량을 폴링해 FILLED 로 수렴.
+> 상태기계는 `PARTIALLY_FILLED → PARTIALLY_FILLED` 자기 전이 허용.
 
 **다음 작업(우선순위 순)**:
-1. 부분 체결 처리 — Mock 어댑터 부분체결 시나리오 + `PARTIALLY_FILLED` 잔량 추적/정책.
-2. T+2 결제 — 매수 직후 `sellableQuantity` 증가하지 않도록 보정(현재 즉시 증가).
-3. market-data 실수집 어댑터(시세/호가/거래정지 피드)로 `MockMarketDataAdapter` 대체.
-4. 토스증권 실제 API 연동(인증/주문/취소/잔고/체결 조회)으로 `MockTossBrokerAdapter` 대체 — **공식 문서 확인 후**.
-5. Redis 레이트리미트/중복 판정, 분산 Outbox 락(다중 인스턴스).
-6. `research/`(Python) 백테스트 모듈.
+1. T+2 결제 — 매수 직후 `sellableQuantity` 증가하지 않도록 보정(현재 즉시 증가).
+2. market-data 실수집 어댑터(시세/호가/거래정지 피드)로 `MockMarketDataAdapter` 대체.
+3. 토스증권 실제 API 연동(인증/주문/취소/잔고/체결 조회)으로 `MockTossBrokerAdapter` 대체 — **공식 문서 확인 후**.
+4. Redis 레이트리미트/중복 판정, 분산 Outbox 락(다중 인스턴스).
+5. `research/`(Python) 백테스트 모듈.
 
 **보류(이유)**: Redis/분산 락은 추가 인프라 필요 → 단일 인스턴스 가정 하에 DB 기반으로 동작 중.
 
