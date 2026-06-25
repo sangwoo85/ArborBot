@@ -5,6 +5,7 @@ import com.tossai.trading.application.port.out.DailyRiskUsageRepository;
 import com.tossai.trading.application.port.out.NotificationPort;
 import com.tossai.trading.application.port.out.OrderRepository;
 import com.tossai.trading.application.service.execution.ExecutionSubmitter;
+import com.tossai.trading.application.service.portfolio.SettlementService;
 import com.tossai.trading.application.service.strategyengine.StrategyEngineService;
 import com.tossai.trading.common.util.Ids;
 import com.tossai.trading.domain.audit.AuditLog;
@@ -26,16 +27,19 @@ public class BatchService {
     private final OrderRepository orderRepository;
     private final ExecutionSubmitter submitter;
     private final StrategyEngineService strategyEngine;
+    private final SettlementService settlementService;
     private final DailyRiskUsageRepository usageRepository;
     private final AuditLogRepository auditLogRepository;
     private final NotificationPort notifications;
 
     public BatchService(OrderRepository orderRepository, ExecutionSubmitter submitter,
-                        StrategyEngineService strategyEngine, DailyRiskUsageRepository usageRepository,
+                        StrategyEngineService strategyEngine, SettlementService settlementService,
+                        DailyRiskUsageRepository usageRepository,
                         AuditLogRepository auditLogRepository, NotificationPort notifications) {
         this.orderRepository = orderRepository;
         this.submitter = submitter;
         this.strategyEngine = strategyEngine;
+        this.settlementService = settlementService;
         this.usageRepository = usageRepository;
         this.auditLogRepository = auditLogRepository;
         this.notifications = notifications;
@@ -57,6 +61,11 @@ public class BatchService {
     /** 전략 성과 재평가 → 임계 미달 전략 비활성화. */
     public List<String> reevaluateStrategies() {
         return strategyEngine.reevaluateAndDeactivate();
+    }
+
+    /** T+2 결제 완료분을 매도가능수량으로 전환. 반환: 처리한 결제 로트 수. */
+    public int settleDueLots() {
+        return settlementService.settleDue(LocalDate.now());
     }
 
     /** 일일 정산 요약(주문금액/실현손실)을 감사 로그에 남긴다. */

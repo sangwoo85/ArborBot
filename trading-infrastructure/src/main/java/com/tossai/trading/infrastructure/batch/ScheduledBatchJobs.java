@@ -40,4 +40,13 @@ public class ScheduledBatchJobs {
             log.warn("[BATCH] 비활성화된 전략: {}", deactivated);
         }
     }
+
+    /** T+2 결제 처리(운영: 장 시작/일일 시점 cron 권장). */
+    @Scheduled(fixedDelayString = "${trading.batch.settlement-interval-ms:3600000}")
+    public void settle() {
+        int n = batchService.settleDueLots();
+        if (n > 0) {
+            log.info("[BATCH] 결제 완료(매도가능 전환) 로트 {}건", n);
+        }
+    }
 }

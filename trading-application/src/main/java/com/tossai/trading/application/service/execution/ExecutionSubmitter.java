@@ -9,6 +9,7 @@ import com.tossai.trading.application.port.out.MarketDataPort;
 import com.tossai.trading.application.port.out.OrderOutboxPort;
 import com.tossai.trading.application.port.out.OrderRepository;
 import com.tossai.trading.application.port.out.PortfolioRepository;
+import com.tossai.trading.application.service.portfolio.SettlementService;
 import com.tossai.trading.common.error.DomainException;
 import com.tossai.trading.common.error.ErrorCode;
 import com.tossai.trading.common.util.Ids;
@@ -46,6 +47,7 @@ public class ExecutionSubmitter {
     private final DailyRiskUsageRepository usageRepository;
     private final PortfolioRepository portfolioRepository;
     private final MarketDataPort marketDataPort;
+    private final SettlementService settlementService;
     private final OrderOutboxPort outbox;
     private final NotificationPort notifications;
     private final AuditLogRepository auditLogRepository;
@@ -54,14 +56,15 @@ public class ExecutionSubmitter {
                               OrderExecutionRepository executionRepository,
                               DailyRiskUsageRepository usageRepository,
                               PortfolioRepository portfolioRepository, MarketDataPort marketDataPort,
-                              OrderOutboxPort outbox, NotificationPort notifications,
-                              AuditLogRepository auditLogRepository) {
+                              SettlementService settlementService, OrderOutboxPort outbox,
+                              NotificationPort notifications, AuditLogRepository auditLogRepository) {
         this.brokerPort = brokerPort;
         this.orderRepository = orderRepository;
         this.executionRepository = executionRepository;
         this.usageRepository = usageRepository;
         this.portfolioRepository = portfolioRepository;
         this.marketDataPort = marketDataPort;
+        this.settlementService = settlementService;
         this.outbox = outbox;
         this.notifications = notifications;
         this.auditLogRepository = auditLogRepository;
@@ -164,6 +167,8 @@ public class ExecutionSubmitter {
             String sector = marketDataPort.getInstrument(order.getSymbol())
                     .map(i -> i.sector()).orElse("UNKNOWN");
             portfolioRepository.applyBuy(order.getSymbol(), sector, delta, fillPrice);
+            // 매수 체결분은 T+2 결제 후에 매도가능해진다(결제 로트 기록).
+            settlementService.recordBuy(order.getSymbol(), delta, LocalDate.now());
         }
 
         if (order.getStatus() == OrderStatus.FILLED) {

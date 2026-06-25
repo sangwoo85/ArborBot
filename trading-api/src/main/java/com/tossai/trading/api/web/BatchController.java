@@ -34,4 +34,9 @@ public class BatchController {
     public BatchService.DailySettlement settlement() {
         return batchService.dailySettlement();
     }
+
+    @PostMapping("/settle-lots")
+    public Map<String, Object> settleLots() {
+        return Map.of("settledLots", batchService.settleDueLots());
+    }
 }

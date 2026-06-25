@@ -60,7 +60,7 @@ public class PortfolioRepositoryAdapter implements PortfolioRepository {
             p.setSymbol(symbol);
             p.setSector(sector);
             p.setQuantity(quantity);
-            p.setSellableQuantity(quantity);
+            p.setSellableQuantity(0);   // T+2 결제 전에는 매도 불가
             p.setAvgPrice(price);
         } else {
             long newQty = p.getQuantity() + quantity;
@@ -68,7 +68,7 @@ public class PortfolioRepositoryAdapter implements PortfolioRepository {
                     .add(amount)
                     .divide(BigDecimal.valueOf(newQty), 4, RoundingMode.HALF_UP);
             p.setQuantity(newQty);
-            p.setSellableQuantity(p.getSellableQuantity() + quantity);
+            // 매도가능수량은 즉시 증가시키지 않는다(T+2 결제 후 increaseSellable 로 반영).
             p.setAvgPrice(newAvg);
         }
         p.setLastPrice(price);
@@ -101,6 +101,16 @@ public class PortfolioRepositoryAdapter implements PortfolioRepository {
         p.setEvaluationAmount(price.multiply(BigDecimal.valueOf(newQty)));
         p.setUnrealizedPnl(price.subtract(p.getAvgPrice()).multiply(BigDecimal.valueOf(newQty)));
         positionJpa.save(p);
+    }
+
+    @Override
+    @Transactional
+    public void increaseSellable(String symbol, long quantity) {
+        positionJpa.findById(symbol).ifPresent(p -> {
+            long sellable = Math.min(p.getQuantity(), p.getSellableQuantity() + quantity);
+            p.setSellableQuantity(sellable);
+            positionJpa.save(p);
+        });
     }
 
     private AccountBalanceEntity balance() {
