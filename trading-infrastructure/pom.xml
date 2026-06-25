@@ -42,6 +42,19 @@
             <artifactId>spring-boot-starter-json</artifactId>
         </dependency>
 
+        <!-- Redis(레이트리미트/중복/분산락) — trading.redis.enabled=true 일 때만 사용 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Testcontainers: Redis 통합 테스트(Docker 있을 때만 실행) -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Flyway -->
         <dependency>
             <groupId>org.flywaydb</groupId>

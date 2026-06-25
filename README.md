@@ -61,7 +61,7 @@
 | market-data: Mock(instrument 시드) + **실 REST 수집 어댑터(설정 주입형)** | ✅ (실 피드 스펙 값만 채우면 연동) |
 | Flyway 마이그레이션 + JPA 영속화 + 감사 로그 | ✅ |
 | 실 증권사 주문 연동 | 🟡 어댑터 완비(`RestBrokerAdapter`), 스펙 값 주입 시 동작. 토스 개인 주문 API 미공개 — [연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md) |
-| Redis 레이트리미트 / 분산 Outbox 락 | ⛔ 보류(인프라 필요) |
+| 레이트리미트/중복 판정 / 분산 Outbox 락 | ✅ 인메모리 기본 + **Redis opt-in**(`trading.redis.enabled=true`, Testcontainers 검증) |
 
 > 기본 실행은 **Mock 브로커 + H2 인메모리**로 Docker 없이 전 과정을 시연/테스트할 수 있습니다.
 
@@ -178,7 +178,7 @@ curl -s localhost:8080/api/v1/risk/status
 - [x] 실 증권사 REST 어댑터(설정 주입형) — 스펙 값 입력 시 동작 ([연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md))
 - [x] market-data 실수집 REST 어댑터(설정 주입형) — 시세/거래정지/유동성 매핑
 - [ ] 실 브로커 스펙 확정 후 값 입력 + 모의투자 검증(토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상)
-- [ ] Redis 기반 레이트리미트/중복 판정, 분산 Outbox 락
+- [x] 레이트리미트/중복 판정 + 분산 Outbox 락(인메모리 기본 + Redis opt-in)
 - [ ] Python 전략 연구·백테스트 모듈(`research/`)
 
 ---

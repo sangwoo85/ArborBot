@@ -7,6 +7,7 @@ import com.tossai.trading.application.port.out.KillSwitchRepository;
 import com.tossai.trading.application.port.out.MarketDataPort;
 import com.tossai.trading.application.port.out.OrderRepository;
 import com.tossai.trading.application.port.out.PortfolioRepository;
+import com.tossai.trading.application.port.out.RateLimiterPort;
 import com.tossai.trading.common.util.Ids;
 import com.tossai.trading.domain.audit.AuditLog;
 import com.tossai.trading.domain.market.Instrument;
@@ -40,6 +41,7 @@ public class RiskEngine {
     private final OrderRepository orderRepository;
     private final PortfolioRepository portfolioRepository;
     private final MarketDataPort marketDataPort;
+    private final RateLimiterPort rateLimiter;
     private final AuditLogRepository auditLogRepository;
 
     public RiskEngine(TradingProperties props,
@@ -48,6 +50,7 @@ public class RiskEngine {
                       OrderRepository orderRepository,
                       PortfolioRepository portfolioRepository,
                       MarketDataPort marketDataPort,
+                      RateLimiterPort rateLimiter,
                       AuditLogRepository auditLogRepository) {
         this.props = props;
         this.killSwitchRepository = killSwitchRepository;
@@ -55,6 +58,7 @@ public class RiskEngine {
         this.orderRepository = orderRepository;
         this.portfolioRepository = portfolioRepository;
         this.marketDataPort = marketDataPort;
+        this.rateLimiter = rateLimiter;
         this.auditLogRepository = auditLogRepository;
     }
 
@@ -185,12 +189,10 @@ public class RiskEngine {
                 .filter(o -> !o.getOrderId().equals(order.getOrderId()))
                 .ifPresent(o -> violations.add(RiskViolation.of("DUPLICATE_ORDER", "중복 주문")));
 
-        // 12. 주문 빈도 제한
-        int recent = orderRepository.countCreatedAfter(now.minusSeconds(60));
-        if (recent > limits.getMaxOrdersPerMinute()) {
+        // 12. 주문 빈도 제한 (RateLimiterPort: 기본 인메모리, Redis 시 다중 인스턴스 원자적)
+        if (!rateLimiter.tryAcquire("orders:rate", limits.getMaxOrdersPerMinute(), 60)) {
             violations.add(new RiskViolation("RATE_LIMIT",
-                    BigDecimal.valueOf(limits.getMaxOrdersPerMinute()), BigDecimal.valueOf(recent),
-                    "주문 빈도 제한 초과"));
+                    BigDecimal.valueOf(limits.getMaxOrdersPerMinute()), null, "주문 빈도 제한 초과"));
         }
 
         RiskCheckResult result = violations.isEmpty()

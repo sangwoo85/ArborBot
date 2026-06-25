@@ -20,6 +20,12 @@ spring:
   h2:
     console:
       enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
 
 server:
   port: 8080
@@ -30,6 +36,9 @@ trading:
   approval-required: true
   dry-run: true
   mode: PAPER
+  # Redis: 기본 비활성(단일 인스턴스, 인메모리 레이트리미트/락). 다중 인스턴스 시 true.
+  redis:
+    enabled: ${TRADING_REDIS_ENABLED:false}
   # 브로커 연동: 기본 mock(시뮬레이션). 실 연동은 provider=rest + 공식 스펙 값 주입.
   # ⚠️ 엔드포인트/필드명은 증권사 공식 문서 확인 후 채울 것(추측 금지). docs/integration/TOSS_BROKER_INTEGRATION.md 참고.
   broker:
@@ -98,6 +107,9 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+  health:
+    redis:
+      enabled: false   # Redis 미사용(기본) 시 health DOWN 방지. enabled 시 별도 모니터링.
 
 springdoc:
   swagger-ui:
