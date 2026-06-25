@@ -120,19 +120,20 @@ Flyway/JPA/감사로그/Actuator/Swagger.
 > 상태기계는 `PARTIALLY_FILLED → PARTIALLY_FILLED` 자기 전이 허용.
 
 **다음 작업(우선순위 순)**:
-1. `research/`(Python) 백테스트 모듈.
-2. 실 외부 API 스펙 확정 시 설정값 입력 + 모의투자 검증:
+1. 실 외부 API 스펙 확정 시 설정값 입력 + 모의투자 검증:
    - 브로커: `RestBrokerAdapter`(`trading.broker.*`) — 토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상.
    - 시세: `RestMarketDataAdapter`(`trading.marketdata.*`).
    가이드: `docs/integration/TOSS_BROKER_INTEGRATION.md`.
-4. T+2 결제 정교화: 공휴일 캘린더 반영(현재 주말만 제외), 매도 시 결제 로트(FIFO) 차감.
-5. 실시간 시세 시뮬레이터(PAPER 데모용 가격 random-walk, 기본 off).
+2. T+2 결제 정교화: 공휴일 캘린더 반영(현재 주말만 제외), 매도 시 결제 로트(FIFO) 차감.
+3. 실시간 시세 시뮬레이터(PAPER 데모용 가격 random-walk, 기본 off).
+4. `research/` 백테스트를 strategy-engine 성과 입력으로 연결(전략 등록 → 백테스트 승격 자동화).
 
 > 외부 연동 패턴: `BrokerPort`/`MarketDataPort` 추상화 + `provider=mock|rest` 스위치. REST 어댑터는
 > 엔드포인트/인증/필드명을 `trading.{broker,marketdata}.*` 설정으로 주입(스펙 하드코딩 금지).
 > 매핑은 각 어댑터의 parse/build 메서드 한 파일에서 조정. RestClient.Builder 빈은 `BrokerConfig` 하나 공유.
 
-**보류(이유)**: Redis/분산 락은 추가 인프라 필요 → 단일 인스턴스 가정 하에 DB 기반으로 동작 중.
+**Python 연구 모듈**: `research/`(표준 라이브러리만, 오프라인 재현). 백테스트 엔진·전략·성과지표·테스트(unittest).
+`python3 -m unittest discover -s tests` / `python3 -m arborbot_research.cli --strategy ma`.
 
 ---
 

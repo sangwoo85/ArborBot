@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arborbot-research"
+version = "0.1.0"
+description = "ArborBot 전략 연구·백테스트 모듈 (오프라인·재현 가능, 표준 라이브러리 기반)"
+requires-python = ">=3.11"
+# 코어는 표준 라이브러리만 사용(외부 의존 없음). 아래는 선택적 개발/연구 도구.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+research = ["numpy", "pandas", "matplotlib"]   # 실데이터 분석/시각화 시 선택 설치
+
+[project.scripts]
+arborbot-backtest = "arborbot_research.cli:main"
+
+[tool.setuptools]
+packages = ["arborbot_research"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
