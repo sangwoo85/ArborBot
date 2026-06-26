@@ -37,6 +37,27 @@ public class StrategyRepositoryAdapter implements StrategyRepository {
         });
     }
 
+    @Override
+    public TradingStrategy save(TradingStrategy s) {
+        StrategyEntity e = jpa.findById(s.strategyId()).orElseGet(StrategyEntity::new);
+        e.setStrategyId(s.strategyId());
+        e.setVersion(s.version());
+        e.setDescription(s.description());
+        e.setTargetRegime(s.targetRegime() == null ? null : s.targetRegime().name());
+        e.setActive(s.active());
+        e.setAutoTradingEligible(s.autoTradingEligible());
+        jpa.save(e);
+        return s;
+    }
+
+    @Override
+    public void setAutoEligible(String strategyId, boolean eligible) {
+        jpa.findById(strategyId).ifPresent(e -> {
+            e.setAutoTradingEligible(eligible);
+            jpa.save(e);
+        });
+    }
+
     private TradingStrategy toDomain(StrategyEntity e) {
         return new TradingStrategy(e.getStrategyId(), e.getVersion(), e.getDescription(),
                 e.getTargetRegime() == null ? null : MarketRegime.valueOf(e.getTargetRegime()),

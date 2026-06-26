@@ -41,6 +41,10 @@ python3 -m arborbot_research.cli --strategy meanrev --bars 600 --seed 7 --commis
 # 실데이터 사용 (CSV: date,open,high,low,close,volume)
 python3 -m arborbot_research.cli --strategy ma --csv path/to/ohlcv.csv
 
+# 백테스트 결과를 strategy-engine 으로 제출 → 자동주문 승격 판정 수신(앱 기동 필요)
+#   (먼저 POST /api/v1/strategies 로 전략 등록)
+python3 -m arborbot_research.cli --strategy ma --submit-url http://localhost:8080 --strategy-id ma-cross-5-20
+
 # 테스트 (설치 불필요)
 python3 -m unittest discover -s tests -v
 # 또는 pytest 사용 시

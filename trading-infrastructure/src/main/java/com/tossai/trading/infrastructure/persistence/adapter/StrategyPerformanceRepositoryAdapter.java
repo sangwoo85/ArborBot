@@ -28,6 +28,22 @@ public class StrategyPerformanceRepositoryAdapter implements StrategyPerformance
         return jpa.findById(strategyId).map(this::toDomain);
     }
 
+    @Override
+    public StrategyPerformance save(StrategyPerformance p) {
+        StrategyPerformanceEntity e = jpa.findById(p.strategyId()).orElseGet(StrategyPerformanceEntity::new);
+        e.setStrategyId(p.strategyId());
+        e.setCumulativeReturnPercent(p.cumulativeReturnPercent());
+        e.setMaxDrawdownPercent(p.maxDrawdownPercent());
+        e.setWinRatePercent(p.winRatePercent());
+        e.setProfitFactor(p.profitFactor());
+        e.setSharpeRatio(p.sharpeRatio());
+        e.setTradeCount(p.tradeCount());
+        e.setNetReturnAfterCostPercent(p.netReturnAfterCostPercent());
+        e.setConsecutiveLosses(p.consecutiveLosses());
+        jpa.save(e);
+        return p;
+    }
+
     private StrategyPerformance toDomain(StrategyPerformanceEntity e) {
         return new StrategyPerformance(e.getStrategyId(), e.getCumulativeReturnPercent(),
                 e.getMaxDrawdownPercent(), e.getWinRatePercent(), e.getProfitFactor(),

@@ -181,7 +181,7 @@ curl -s localhost:8080/api/v1/risk/status
 - [ ] 실 브로커 스펙 확정 후 값 입력 + 모의투자 검증(토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상)
 - [x] 레이트리미트/중복 판정 + 분산 Outbox 락(인메모리 기본 + Redis opt-in)
 - [x] Python 전략 연구·백테스트 모듈(`research/`) — 오프라인 재현, 거래비용 반영 지표, 테스트 12개
-- [ ] `research/` 백테스트 → strategy-engine 성과 입력 연결(전략 승격 자동화)
+- [x] `research/` 백테스트 → strategy-engine 연결(전략 등록 → 백테스트 제출 → 자동주문 승격/강등)
 - [ ] 실시간 시세 시뮬레이터(PAPER 데모용)
 
 ---
