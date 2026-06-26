@@ -94,10 +94,11 @@ APPROVED면 Outbox enqueue + `ExecutionSubmitter.submit`(Mock 브로커, 체결 
 - **테스트 격리**: 각 통합 테스트 클래스는 고유 H2 인메모리 DB를 `properties`로 지정.
   예: `spring.datasource.url=jdbc:h2:mem:trading_xxx;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`.
   (같은 이름 mem DB는 JVM 내 공유되므로 테스트마다 이름을 다르게.)
-- 위험/주문 로직 변경 시 **거절 케이스 테스트 필수**. 현재 통과 테스트(27개 + Docker 시 Redis 통합 2개)는 회귀 가드:
-  상태기계, 기본흐름(PENDING→approve→FILLED), 자동주문, KillSwitch 거절, 거래정지/유동성 거절,
-  일일손실 한도 차단, 타임아웃 재동기화, 부분 체결 수렴, T+2 결제, 포지션 갱신, 전략 재평가,
-  백테스트 승격/강등, REST 브로커/시세 어댑터(MockRestServiceServer), 인메모리/Redis 레이트리미트·락, 스모크.
+- 위험/주문 로직 변경 시 **거절 케이스 테스트 필수**. 현재 통과 테스트(32개 + Docker 시 Redis 통합 2개)는 회귀 가드:
+  상태기계, 영업일 캘린더(주말/공휴일), 기본흐름(PENDING→approve→FILLED), 자동주문, KillSwitch 거절,
+  거래정지/유동성 거절, 일일손실 한도 차단, 타임아웃 재동기화, 부분 체결 수렴, T+2 결제·미결제 로트 정리,
+  포지션 갱신, 전략 재평가, 백테스트 승격/강등, REST 브로커/시세 어댑터(MockRestServiceServer),
+  인메모리/Redis 레이트리미트·락, 스모크.
 - Redis 통합 테스트는 `@Testcontainers(disabledWithoutDocker=true)` — Docker 데몬 있을 때만 실행, 없으면 skip.
 - 기대 동작이 "거절"인데 신뢰도/한도 때문에 의도와 다르게 막히면, 테스트 `properties`로
   `trading.limits.*`(min-confidence-score, max-order-amount 등)를 조정해 의도한 한 가지만 검증.
@@ -109,7 +110,8 @@ APPROVED면 Outbox enqueue + `ExecutionSubmitter.submit`(Mock 브로커, 체결 
 **구현됨**: 신호생성(Mock)·품질게이트, RiskEngine(KillSwitch/한도/중복/빈도/잔고/신뢰도/거래정지·유동성),
 주문 상태기계·자동/승인/거절, Mock 토스 어댑터(Retry/CB/멱등/조회), Outbox+디스패처,
 타임아웃 결과불명 복구(맹목 재전송 금지), **부분 체결 처리(delta 누적·잔량 폴링·수렴)**,
-체결→포지션/현금 갱신, 매도 실현손실→일일손실 한도, **T+2 결제(매수 직후 매도불가→결제 후 매도가능 전환)**,
+체결→포지션/현금 갱신, 매도 실현손실→일일손실 한도, **T+2 결제(매수 직후 매도불가→결제 후 매도가능 전환,
+영업일=주말+공휴일 제외, 전량 매도 시 미결제 로트 정리)**,
 batch(주문동기화·전략 재평가/비활성화·일일정산·결제처리), market-data(Mock 기본 + 실 REST 어댑터),
 브로커(Mock 기본 + 실 REST 어댑터, 설정 주입형),
 레이트리미트·중복판정·분산 Outbox 락(인메모리 기본 + Redis opt-in `trading.redis.enabled=true`),
@@ -124,8 +126,7 @@ Flyway/JPA/감사로그/Actuator/Swagger.
    - 브로커: `RestBrokerAdapter`(`trading.broker.*`) — 토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상.
    - 시세: `RestMarketDataAdapter`(`trading.marketdata.*`).
    가이드: `docs/integration/TOSS_BROKER_INTEGRATION.md`.
-2. T+2 결제 정교화: 공휴일 캘린더 반영(현재 주말만 제외), 매도 시 결제 로트(FIFO) 차감.
-3. 실시간 시세 시뮬레이터(PAPER 데모용 가격 random-walk, 기본 off).
+2. 실시간 시세 시뮬레이터(PAPER 데모용 가격 random-walk, 기본 off).
 
 > 백테스트→거버넌스 연결(완료): `research/` 리포트 → `POST /api/v1/strategies/{id}/backtest`
 > → `StrategyEngineService.submitBacktest` 가 임계 충족 시 `autoTradingEligible` 승격(미달 시 강등).

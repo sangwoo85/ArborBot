@@ -44,4 +44,18 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
             jpa.save(e);
         });
     }
+
+    @Override
+    public List<SettlementLot> findUnsettledBySymbol(String symbol) {
+        return jpa.findBySymbolAndSettledFalseOrderBySettleDateAsc(symbol).stream()
+                .map(e -> new SettlementLot(e.getLotId(), e.getSymbol(), e.getQuantity(),
+                        e.getSettleDate(), e.isSettled()))
+                .toList();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteUnsettledBySymbol(String symbol) {
+        jpa.deleteBySymbolAndSettledFalse(symbol);
+    }
 }

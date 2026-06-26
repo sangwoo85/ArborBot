@@ -13,4 +13,10 @@ public interface SettlementRepository {
     List<SettlementLot> findDue(LocalDate asOf);
 
     void markSettled(String lotId);
+
+    /** 종목의 미결제 로트(결제일 오름차순, FIFO). */
+    List<SettlementLot> findUnsettledBySymbol(String symbol);
+
+    /** 종목의 미결제 로트 전체 삭제(전량 매도로 보유가 사라진 경우 정리). */
+    void deleteUnsettledBySymbol(String symbol);
 }

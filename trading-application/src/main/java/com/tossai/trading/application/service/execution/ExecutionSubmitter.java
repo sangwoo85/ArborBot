@@ -163,6 +163,7 @@ public class ExecutionSubmitter {
                         "order=" + order.getOrderId() + " loss=" + realizedLoss, order.getCorrelationId());
             }
             portfolioRepository.applySell(order.getSymbol(), delta, fillPrice);
+            settlementService.onSell(order.getSymbol());   // 전량 매도 시 미결제 로트 정리
         } else {
             String sector = marketDataPort.getInstrument(order.getSymbol())
                     .map(i -> i.sector()).orElse("UNKNOWN");

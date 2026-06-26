@@ -39,6 +39,10 @@ trading:
   # Redis: 기본 비활성(단일 인스턴스, 인메모리 레이트리미트/락). 다중 인스턴스 시 true.
   redis:
     enabled: ${TRADING_REDIS_ENABLED:false}
+  # T+2 결제: 영업일 기준(주말 제외). 거래소 공휴일은 아래에 ISO 날짜로 주입(추측 하드코딩 금지).
+  settlement:
+    business-days: 2
+    holidays: []   # 예: ["2026-01-01","2026-03-01"] — 거래소 공식 휴장일로 채움
   # 브로커 연동: 기본 mock(시뮬레이션). 실 연동은 provider=rest + 공식 스펙 값 주입.
   # ⚠️ 엔드포인트/필드명은 증권사 공식 문서 확인 후 채울 것(추측 금지). docs/integration/TOSS_BROKER_INTEGRATION.md 참고.
   broker:

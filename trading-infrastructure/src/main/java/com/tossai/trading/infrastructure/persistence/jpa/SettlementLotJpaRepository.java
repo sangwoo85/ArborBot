@@ -8,4 +8,8 @@ import java.util.List;
 
 public interface SettlementLotJpaRepository extends JpaRepository<SettlementLotEntity, String> {
     List<SettlementLotEntity> findBySettledFalseAndSettleDateLessThanEqual(LocalDate asOf);
+
+    List<SettlementLotEntity> findBySymbolAndSettledFalseOrderBySettleDateAsc(String symbol);
+
+    void deleteBySymbolAndSettledFalse(String symbol);
 }

@@ -1,5 +1,6 @@
 package com.tossai.trading;
 
+import com.tossai.trading.application.config.SettlementProperties;
 import com.tossai.trading.application.config.TradingProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties(TradingProperties.class)
+@EnableConfigurationProperties({TradingProperties.class, SettlementProperties.class})
 public class TradingApplication {
 
     public static void main(String[] args) {

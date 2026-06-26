@@ -175,7 +175,7 @@ curl -s localhost:8080/api/v1/risk/status
 ## 9. 로드맵 (다음 작업)
 
 - [x] 부분 체결(`PARTIALLY_FILLED`) 처리 + 잔량 정책
-- [x] T+2 결제(매수 직후 매도가능수량 미증가 → 결제 후 전환)
+- [x] T+2 결제(매수 직후 매도가능수량 미증가 → 결제 후 전환, 공휴일 캘린더 설정 주입, 전량 매도 시 미결제 로트 정리)
 - [x] 실 증권사 REST 어댑터(설정 주입형) — 스펙 값 입력 시 동작 ([연동 가이드](docs/integration/TOSS_BROKER_INTEGRATION.md))
 - [x] market-data 실수집 REST 어댑터(설정 주입형) — 시세/거래정지/유동성 매핑
 - [ ] 실 브로커 스펙 확정 후 값 입력 + 모의투자 검증(토스 개인 주문 API 미공개 → KIS/키움 등 공식 API 대상)
@@ -183,6 +183,7 @@ curl -s localhost:8080/api/v1/risk/status
 - [x] Python 전략 연구·백테스트 모듈(`research/`) — 오프라인 재현, 거래비용 반영 지표, 테스트 12개
 - [x] `research/` 백테스트 → strategy-engine 연결(전략 등록 → 백테스트 제출 → 자동주문 승격/강등)
 - [ ] 실시간 시세 시뮬레이터(PAPER 데모용)
+- [ ] 실 외부 API 스펙 확정 시 설정값 입력 + 모의투자 검증(외부 의존)
 
 ---
 
